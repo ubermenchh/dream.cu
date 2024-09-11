@@ -13,7 +13,7 @@ __host__ __device__ static inline Vector_t Vector(double x, double y, double z) 
     return (Vector_t){.x = x, .y = y, .z = z};
 }  
 
-__host__ __device__ static inline void vector_print(Vector_t v) {
+static inline void vector_print(Vector_t v) {
     printf("Vector(x=%f, y=%f, z=%f)\n", v.x, v.y, v.z);
 } 
 
@@ -46,26 +46,26 @@ __host__ __device__ static inline Vector_t vector_sub_(Vector_t* v, Vector_t w) 
     return *v;
 }
 
-__host__ __device__ static inline Vector_t vector_mult(Vector_t v, Vector_t w) {
+__host__ __device__ static inline Vector_t vector_mul(Vector_t v, Vector_t w) {
     Vector_t out = Vector(v.x * w.x, v.y * w.y, v.z * w.z);
     return out;
 }
 
-__host__ __device__ static inline Vector_t vector_mult_(Vector_t* v, Vector_t w) {
+__host__ __device__ static inline Vector_t vector_mul_(Vector_t* v, Vector_t w) {
     v->x += w.x; 
     v->y += w.y; 
     v->z += w.z;
     return *v;
 }
 
-__host__ __device__ static inline Vector_t _vector_scalar_mult(Vector_t v, double t) {
+__host__ __device__ static inline Vector_t _vector_scalar_mul(Vector_t v, double t) {
     v.x *= t;
     v.y *= t;
     v.z *= t;
     return v;
 }
 
-__host__ __device__ static inline Vector_t vector_scalar_mult(Vector_t v, double t) {
+__host__ __device__ static inline Vector_t vector_scalar_mul(Vector_t v, double t) {
     Vector_t out = Vector(v.x * t, v.y * t, v.z * t);
     return out;
 }
@@ -139,13 +139,13 @@ __host__ __device__ static inline bool vector_near_zero(Vector_t vec) {
 }
 
 __host__ __device__ static inline Vector_t vector_reflect(Vector_t v, Vector_t n) {
-    return vector_sub(v, vector_scalar_mult(n, 2*vector_dot(v, n)));
+    return vector_sub(v, vector_scalar_mul(n, 2*vector_dot(v, n)));
 }
 
 __host__ __device__ static inline Vector_t vector_refract(Vector_t uv, Vector_t n, double etai_over_etat) {
     double cos_theta = fmin(vector_dot(vector_negate(uv), n), 1.0);
-    Vector_t r_out_perp = vector_scalar_mult(vector_add(uv, vector_scalar_mult(n, cos_theta)), etai_over_etat);
-    Vector_t r_out_parallel = vector_scalar_mult(n, 
+    Vector_t r_out_perp = vector_scalar_mul(vector_add(uv, vector_scalar_mul(n, cos_theta)), etai_over_etat);
+    Vector_t r_out_parallel = vector_scalar_mul(n, 
                                                  -sqrt(fabs(1.0 - vector_length_sq(r_out_perp))));
     return vector_add(r_out_perp, r_out_parallel);
 }

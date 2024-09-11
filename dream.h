@@ -24,5 +24,6 @@ __host__ __device__ static inline double random_double(double min, double max) {
 
 // Common Headers 
 #include "vector.h"
+#include "ray.h"
 
 #endif // DREAM_H
