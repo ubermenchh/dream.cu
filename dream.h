@@ -5,10 +5,6 @@
 #include <stdio.h> 
 #include <stdbool.h> 
 #include <stdlib.h>
-#include <float.h>
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <time.h>
 
 // Constants 
 #define PI (3.1415926535897932385)
@@ -26,16 +22,8 @@ __host__ __device__ static inline double random_double(double min, double max) {
     return min + (max - min) * rand_double();
 } 
 
-__device__ static inline double device_max(double a, double b) {
-    return a > b ? a : b;
-}
-
 // Common Headers 
 #include "vector.h"
 #include "ray.h"
-#include "sphere.h"
-#include "hittable.h"
-#include "hittable_list.h"
-#include "interval.h"
 
 #endif // DREAM_H

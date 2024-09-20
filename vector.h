@@ -7,11 +7,13 @@ typedef struct Vector_t {
     double z;
 } Vector_t;
 
+typedef Vector_t Point_t;
+
 __host__ __device__ static inline Vector_t Vector(double x, double y, double z) {
     return (Vector_t){.x = x, .y = y, .z = z};
 }  
 
-__host__ __device__ static inline void vector_print(Vector_t v) {
+static inline void vector_print(Vector_t v) {
     printf("Vector(x=%f, y=%f, z=%f)\n", v.x, v.y, v.z);
 } 
 
