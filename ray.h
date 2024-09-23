@@ -5,17 +5,15 @@
 
 class Ray {
     public:
-        Vector origin;
-        Vector direction;
-
+        Vector orig;
+        Vector dir;
+    
         __device__ Ray() {}
-        __device__ Ray(const Vector& origin, const Vector& direction) { 
-            origin = origin; direction = direction; 
-        }
-        __device__ Vector origin() const { return origin; }
-        __device__ Vector direction() const { return direction; }
+        __device__ Ray(const Vector& orig, const Vector& dir): orig(orig), dir(dir) {}
+        __device__ Vector origin() const { return orig; }
+        __device__ Vector direction() const { return dir; }
         __device__ Vector at(double t) const {
-            return origin + t * direction;
+            return orig + t * dir;
         }
 };
 

@@ -67,7 +67,7 @@ __host__ __device__ inline Vector operator*(double t, const Vector& v) {
     return Vector(t * v.e[0], t * v.e[1], t * v.e[2]);
 }
 
-__host__ __device__ inline Vector operator*(const Vector& c, double t) {
+__host__ __device__ inline Vector operator*(const Vector& v, double t) {
     return t * v;
 }
 
