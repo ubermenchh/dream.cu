@@ -12,10 +12,11 @@
 #include "hittable_list.h"
 #include "sphere.h"
 #include "camera.h"
+#include "material.h"
 
 #define checkCudaErrors(val) check_cuda((val), #val, __FILE__, __LINE__)
 
-void check_cuda(cudaError_t result,const char* func, const char* file, int line) {
+void check_cuda(cudaError_t result, char const* const func, const char* file, int const line) {
     if (result) {
         std::cerr << "CUDA error: " << static_cast<unsigned int>(result) << " at " << file << ":" << line << " '" << func << "' \n";
         cudaDeviceReset();
@@ -23,15 +24,29 @@ void check_cuda(cudaError_t result,const char* func, const char* file, int line)
     }
 }
 
-__device__ Vector color(const Ray& r, Hittable** world) {
-    HitRecord rec;
-    if ((*world)->hit(r, 0.0, FLT_MAX, rec)) {
-        return 0.5f * Vector(rec.normal.x() + 1.f, rec.normal.y() + 1.f, rec.normal.z() + 1.f);
-    } else {   
-        Vector unit_direction = unit_vector(r.direction());
-        double t = 0.5f * (unit_direction.y() + 1.f);
-        return (1.0f - t) * Vector(1.0, 1.0, 1.0) + t * Vector(0.5, 0.7, 1.0);
+__device__ Vector color(const Ray& r, Hittable** world, curandState* local_rand_state) {
+    Ray cur_ray = r;
+    Vector cur_attenuation = Vector(1.0, 1.0, 1.0); 
+    
+    for (int i = 0; i < 50; i++) {
+        HitRecord rec;
+        if ((*world)->hit(cur_ray, 0.001f, FLT_MAX, rec)) {
+            Ray scattered;
+            Vector attenuation;
+            if (rec.mat_ptr->scatter(cur_ray, rec, attenuation, scattered, local_rand_state)) {
+                cur_attenuation *= attenuation;
+                cur_ray = scattered;
+            } else {
+                return Vector(0.0, 0.0, 0.0);
+            }
+        } else {   
+            Vector unit_direction = unit_vector(cur_ray.direction());
+            double t = 0.5f * (unit_direction.y() + 1.0f);
+            Vector c = (1.0f - t) * Vector(1.0, 1.0, 1.0) + t * Vector(0.5, 0.7, 1.0);
+            return cur_attenuation * c;
+        }
     }
+    return Vector(0.0, 0.0, 0.0);
 }
 
 __global__ void render_init(int max_x, int max_y, curandState* rand_state) {
@@ -39,6 +54,7 @@ __global__ void render_init(int max_x, int max_y, curandState* rand_state) {
     int j = threadIdx.y + blockIdx.y * blockDim.y;
     if ((i >= max_x) || (j >= max_y)) return;
     int pixel_index = j * max_x + i;
+    
     // Each thread gets the same seed, different sequence number, no offset
     curand_init(1984, pixel_index, 0, &rand_state[pixel_index]);
 }
@@ -49,28 +65,37 @@ __global__ void render(Vector* fb, int max_x, int max_y, int ns, Camera** cam, H
     if ((i >= max_x) || (j >= max_y)) return;
     int pixel_index = j * max_x + i;
     curandState local_rand_state = rand_state[pixel_index];
-    Vector col(0, 0, 0);
+    Vector col = Vector(0, 0, 0);
     for (int s = 0; s < ns; s++) {
         double u = double(i + curand_uniform(&local_rand_state)) / double(max_x);
         double v = double(j + curand_uniform(&local_rand_state)) / double(max_y);
         Ray r = (*cam)->get_ray(u, v);
-        col += color(r, world);
+        col += color(r, world, &local_rand_state);
     }
-    fb[pixel_index] = col / double(ns);
+    rand_state[pixel_index] = local_rand_state;
+    col /= double(ns);
+    col[0] = sqrt(col[0]);
+    col[1] = sqrt(col[1]);
+    col[2] = sqrt(col[2]);
+    fb[pixel_index] = col;
 }
 
 __global__ void create_world(Hittable** d_list, Hittable** d_world, Camera** d_camera) {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
-        *(d_list)     = new Sphere(Vector(0, 0, -1), 0.5);
-        *(d_list + 1) = new Sphere(Vector(0, -100.5, -1), 100);
-        *d_world      = new HittableList(d_list, 2);
+        d_list[0]     = new Sphere(Vector( 0,      0, -1), 0.5, new Lambertian(Vector(0.8, 0.3, 0.3)));
+        d_list[1]     = new Sphere(Vector( 0, -100.5, -1), 100, new Lambertian(Vector(0.8, 0.8, 0.0)));
+        d_list[2]     = new Sphere(Vector( 1,      0, -1), 0.5, new      Metal(Vector(0.8, 0.6, 0.2), 1.0));
+        d_list[3]     = new Sphere(Vector(-1,      0, -1), 0.5, new      Metal(Vector(0.8, 0.8, 0.8), 0.3));
+        *d_world      = new HittableList(d_list, 4);
         *d_camera     = new Camera();
     }
 }
 
 __global__ void free_world(Hittable** d_list, Hittable** d_world, Camera** d_camera) {
-    delete *(d_list);
-    delete *(d_list + 1);
+    for (int i = 0; i < 4; i++) {
+        delete ((Sphere*)d_list[i])->mat_ptr;
+        delete d_list[i];
+    }
     delete *d_world;
     delete *d_camera;
 }
@@ -95,7 +120,7 @@ int main() {
     
     // create world
     Hittable** d_list;
-    checkCudaErrors(cudaMalloc((void**)&d_list, 2 * sizeof(Hittable*)));
+    checkCudaErrors(cudaMalloc((void**)&d_list, 4 * sizeof(Hittable*)));
     Hittable** d_world;
     checkCudaErrors(cudaMalloc((void**)&d_world, sizeof(Hittable*)));
     Camera** d_camera;

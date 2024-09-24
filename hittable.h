@@ -1,10 +1,13 @@
 #ifndef HITTABLE_H 
 #define HITTABLE_H 
 
+class Material;
+
 struct HitRecord {
     double t;
     Vector p;
     Vector normal;
+    Material* mat_ptr;
 };
 
 class Hittable {

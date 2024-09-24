@@ -6,11 +6,12 @@
 class Sphere: public Hittable {
     public: 
         __device__ Sphere() {}
-        __device__ Sphere(Vector cent, double r): center(cent), radius(r) {};
+        __device__ Sphere(Vector cent, double r, Material* m): center(cent), radius(r), mat_ptr(m) {};
         __device__ virtual bool hit(const Ray& r, double t_min, double t_max, HitRecord& rec) const;
         
         Vector center;
         double radius;
+        Material* mat_ptr;
 };
     
 __device__ bool Sphere::hit(const Ray& r, double t_min, double t_max, HitRecord& rec) const {
@@ -26,6 +27,7 @@ __device__ bool Sphere::hit(const Ray& r, double t_min, double t_max, HitRecord&
             rec.t = temp;
             rec.p = r.at(rec.t);
             rec.normal = (rec.p - center) / radius;
+            rec.mat_ptr = mat_ptr;
             return true;
         }
         temp = (-b + sqrt(discriminant)) / a;
@@ -33,6 +35,7 @@ __device__ bool Sphere::hit(const Ray& r, double t_min, double t_max, HitRecord&
             rec.t = temp;
             rec.p = r.at(rec.t);
             rec.normal = (rec.p - center) / radius;
+            rec.mat_ptr = mat_ptr;
             return true;
         }
     }
