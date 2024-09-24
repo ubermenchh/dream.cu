@@ -82,17 +82,18 @@ __global__ void render(Vector* fb, int max_x, int max_y, int ns, Camera** cam, H
 
 __global__ void create_world(Hittable** d_list, Hittable** d_world, Camera** d_camera) {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
-        d_list[0]     = new Sphere(Vector( 0,      0, -1), 0.5, new Lambertian(Vector(0.8, 0.3, 0.3)));
-        d_list[1]     = new Sphere(Vector( 0, -100.5, -1), 100, new Lambertian(Vector(0.8, 0.8, 0.0)));
-        d_list[2]     = new Sphere(Vector( 1,      0, -1), 0.5, new      Metal(Vector(0.8, 0.6, 0.2), 1.0));
-        d_list[3]     = new Sphere(Vector(-1,      0, -1), 0.5, new      Metal(Vector(0.8, 0.8, 0.8), 0.3));
+        d_list[0]     = new Sphere(Vector( 0,      0, -1),   0.5, new Lambertian(Vector(0.8, 0.3, 0.3)));
+        d_list[1]     = new Sphere(Vector( 0, -100.5, -1),   100, new Lambertian(Vector(0.8, 0.8, 0.0)));
+        d_list[2]     = new Sphere(Vector( 1,      0, -1),   0.5, new      Metal(Vector(0.8, 0.6, 0.2), 0.0));
+        d_list[3]     = new Sphere(Vector(-1,      0, -1),   0.5, new Dielectric(1.5));
+        d_list[4]     = new Sphere(Vector(-1,      0, -1), -0.45, new Dielectric(1.5));
         *d_world      = new HittableList(d_list, 4);
         *d_camera     = new Camera();
     }
 }
 
 __global__ void free_world(Hittable** d_list, Hittable** d_world, Camera** d_camera) {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         delete ((Sphere*)d_list[i])->mat_ptr;
         delete d_list[i];
     }
@@ -120,7 +121,7 @@ int main() {
     
     // create world
     Hittable** d_list;
-    checkCudaErrors(cudaMalloc((void**)&d_list, 4 * sizeof(Hittable*)));
+    checkCudaErrors(cudaMalloc((void**)&d_list, 5 * sizeof(Hittable*)));
     Hittable** d_world;
     checkCudaErrors(cudaMalloc((void**)&d_world, sizeof(Hittable*)));
     Camera** d_camera;
