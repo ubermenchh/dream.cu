@@ -69,7 +69,7 @@ __global__ void render(Vector* fb, int max_x, int max_y, int ns, Camera** cam, H
     for (int s = 0; s < ns; s++) {
         double u = double(i + curand_uniform(&local_rand_state)) / double(max_x);
         double v = double(j + curand_uniform(&local_rand_state)) / double(max_y);
-        Ray r = (*cam)->get_ray(u, v);
+        Ray r = (*cam)->get_ray(u, v, &local_rand_state);
         col += color(r, world, &local_rand_state);
     }
     rand_state[pixel_index] = local_rand_state;
@@ -80,15 +80,25 @@ __global__ void render(Vector* fb, int max_x, int max_y, int ns, Camera** cam, H
     fb[pixel_index] = col;
 }
 
-__global__ void create_world(Hittable** d_list, Hittable** d_world, Camera** d_camera) {
+__global__ void create_world(Hittable** d_list, Hittable** d_world, Camera** d_camera, int nx, int ny) {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
         d_list[0]     = new Sphere(Vector( 0,      0, -1),   0.5, new Lambertian(Vector(0.8, 0.3, 0.3)));
         d_list[1]     = new Sphere(Vector( 0, -100.5, -1),   100, new Lambertian(Vector(0.8, 0.8, 0.0)));
         d_list[2]     = new Sphere(Vector( 1,      0, -1),   0.5, new      Metal(Vector(0.8, 0.6, 0.2), 0.0));
         d_list[3]     = new Sphere(Vector(-1,      0, -1),   0.5, new Dielectric(1.5));
         d_list[4]     = new Sphere(Vector(-1,      0, -1), -0.45, new Dielectric(1.5));
-        *d_world      = new HittableList(d_list, 4);
-        *d_camera     = new Camera();
+        *d_world      = new HittableList(d_list, 5);
+        Vector look_from(3, 3, 2);
+        Vector look_at(0, 0, -1);
+        double dist_to_focus = (look_from - look_at).length();
+        double aperture = 2.0;
+        *d_camera     = new Camera(look_from,
+                                   look_at,
+                                   Vector( 0, 1,  0),
+                                   20.0, 
+                                   double(nx) / double(ny),
+                                   aperture,
+                                   dist_to_focus);
     }
 }
 
@@ -126,7 +136,7 @@ int main() {
     checkCudaErrors(cudaMalloc((void**)&d_world, sizeof(Hittable*)));
     Camera** d_camera;
     checkCudaErrors(cudaMalloc((void**)&d_camera, sizeof(Camera*)));
-    create_world <<< 1, 1 >>> (d_list, d_world, d_camera);
+    create_world <<< 1, 1 >>> (d_list, d_world, d_camera, nx, ny);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
     
