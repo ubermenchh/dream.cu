@@ -4,6 +4,10 @@
 #include "ray.h"
 #include <curand_kernel.h>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 __device__ Vector random_in_unit_disk(curandState* local_rand_state) {
     Vector p;
     do {
@@ -23,7 +27,8 @@ class Camera {
     
         __device__ Camera(Vector look_from, Vector look_at, Vector v_up, double v_fov, double aspect, double aperture, double focus_dist) {
             // v_fov is top to bottom in degrees 
-            double theta = v_fov * (double)M_PI / 180.f;
+            lens_radius = aperture / 2.f; 
+            double theta = v_fov * ((double)M_PI) / 180.f;
             double half_height = tan(theta / 2.f);
             double half_width = aspect * half_height;
             
@@ -33,14 +38,14 @@ class Camera {
             v = cross(w, u);
             
             lower_left_corner = origin - half_width * focus_dist * u - half_height * focus_dist * v - focus_dist * w;
-            horizontal = 2 * half_width * focus_dist * u;
-            vertical = 2 * half_height * focus_dist * v;
+            horizontal = 2.f * half_width * focus_dist * u;
+            vertical = 2.f * half_height * focus_dist * v;
         }
     
         __device__ Ray get_ray(float s, float t, curandState* local_rand_state) {
             Vector rd = lens_radius * random_in_unit_disk(local_rand_state);
             Vector offset = u * rd.x() + v * rd.y();
-            return Ray(origin, lower_left_corner + s*horizontal + t*vertical - origin - offset);
+            return Ray(origin + offset, lower_left_corner + s*horizontal + t*vertical - origin - offset);
         }
 };
 
